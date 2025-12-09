@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026 冬季日本行 - Winter Journey</title>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        arctic: {
+                            deep: '#0F4C75',   /* 深水藍 */
+                            mid: '#3282B8',    /* 淡藍 */
+                            light: '#BBE1FA',  /* 春花色/冰藍 */
+                            white: '#F9FAFB',  /* 純雪白 */
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F0F4F8;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* 隱藏 Scrollbar 但保留功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .tab-btn.active {
+            background-color: #F9FAFB;
+            color: #0F4C75;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 輸入框聚焦樣式優化 */
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid #3282B8;
+            outline-offset: -1px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="min-h-screen pb-24 relative">
+
+    <header class="relative h-40 bg-gradient-to-r from-arctic-deep to-arctic-mid overflow-hidden shadow-md">
+        <img src="https://images.unsplash.com/photo-1483664852095-d6cc6870705d?q=80&w=2070&auto=format&fit=crop" 
+             class="absolute inset-0 w-full h-full object-cover opacity-50" alt="Winter Snow">
+        
+        <div class="absolute inset-0 flex items-center pl-6">
+            <h1 class="text-3xl font-bold text-white tracking-widest drop-shadow-lg flex items-center">
+                <i class="fas fa-snowflake mr-3 text-arctic-light"></i>
+                WINTER TRIP
+            </h1>
+        </div>
+
+        <div class="absolute bottom-0 right-0 flex space-x-1 px-2 z-10 overflow-x-auto max-w-full">
+            <button v-for="tab in tabs" :key="tab.id" 
+                    @click="currentTab = tab.id"
+                    :class="['flex flex-col items-center justify-center px-4 py-2 transition-all duration-300 min-w-[60px]', 
+                             currentTab === tab.id ? 'active' : 'text-white/80 hover:text-white hover:bg-white/10 rounded-t-lg']">
+                <i :class="tab.icon" class="text-xl mb-1"></i>
+                <span class="text-xs font-medium">{{ tab.name }}</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="p-4 max-w-3xl mx-auto">
+        
+        <div v-if="currentTab === 'itinerary'">
+            
+            <div class="flex space-x-3 overflow-x-auto no-scrollbar pb-4 snap-x">
+                <div v-for="(day, index) in days" :key="day.date" 
+                     @click="selectDate(index)"
+                     :class="['flex-shrink-0 w-20 h-20 rounded-xl flex flex-col items-center justify-center snap-center shadow-sm cursor-pointer border-2 transition-all', 
+                              selectedDateIndex === index ? 'bg-arctic-deep border-arctic-deep text-white transform scale-105' : 'bg-white border-transparent text-gray-500']">
+                    <span class="text-2xl font-bold">{{ day.dayOfWeek }}</span>
+                    <span class="text-xs">{{ day.dateDisplay }}</span>
+                </div>
+            </div>
+
+            <div class="bg-arctic-light/30 border border-arctic-mid/20 rounded-lg p-3 mb-6 flex items-start text-arctic-deep">
+                <i class="fas fa-bed mt-1 mr-3 text-xl"></i>
+                <div>
+                    <h3 class="font-bold text-sm">今晚住宿</h3>
+                    <p class="text-lg font-bold">{{ currentHotel.name }}</p>
+                    <p class="text-xs opacity-75" v-if="currentHotel.address">{{ currentHotel.address }}</p>
+                    <p class="text-xs opacity-75" v-if="currentHotel.phone"><i class="fas fa-phone-alt mr-1"></i>{{ currentHotel.phone }}</p>
+                </div>
+            </div>
+
+            <div class="space-y-0">
+                <div v-for="(item, index) in currentDayItinerary" :key="item.id" 
+                     draggable="true"
+                     @dragstart="dragStart(index)"
+                     @dragover.prevent
+                     @drop="drop(index)"
+                     class="relative group">
+                    
+                    <div v-if="index > 0" class="flex items-center my-2 ml-8 relative h-14">
+                        <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-300 -ml-[1px]"></div>
+                        <div class="bg-gray-100 pl-2 pr-3 py-1 rounded-md text-xs text-gray-600 border border-gray-200 flex items-center shadow-sm z-10 w-full max-w-[280px]">
+                            <i class="fas fa-arrow-down text-arctic-mid mr-2"></i>
+                            <div class="flex gap-2 w-full">
+                                <input v-model="item.transitMethod" placeholder="交通方式 (如: JR/公車)" class="bg-white border border-gray-300 rounded px-2 py-1 w-full focus:outline-none text-gray-700 placeholder-gray-400">
+                                <div class="flex items-center bg-white border border-gray-300 rounded px-2">
+                                    <input v-model="item.transitTime" type="text" placeholder="時間" class="w-10 text-center focus:outline-none">
+                                    <span class="text-gray-400 text-[10px] whitespace-nowrap">分</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border-l-4 border-arctic-mid p-4 relative overflow-hidden transition-all active:scale-[0.99]">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span :class="categoryBadge(item.category)" class="text-[10px] px-2 py-0.5 rounded text-white font-bold">
+                                        {{ item.category }}
+                                    </span>
+                                    <h3 class="font-bold text-gray-800 text-lg">{{ item.name }}</h3>
+                                </div>
+                                
+                                <p v-if="['景點','住宿','美食','購物'].includes(item.category)" class="text-xs text-gray-500 mb-1">
+                                    <i class="far fa-clock mr-1"></i> {{ item.hours || '未設定時間' }}
+                                </p>
+                                <p v-if="item.category === '景點' && item.ticket" class="text-xs text-red-500 mb-1">
+                                    <i class="fas fa-ticket-alt mr-1"></i> {{ item.ticket }}
+                                </p>
+                                <p class="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded" v-if="item.notes">
+                                    {{ item.notes }}
+                                </p>
+                                <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.name)" target="_blank" class="inline-block mt-2 text-xs text-arctic-mid hover:underline">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>開啟地圖
+                                </a>
+                            </div>
+
+                            <div class="flex flex-col space-y-2 ml-2">
+                                <button @click="openEditModal(item)" class="text-gray-300 hover:text-arctic-deep p-1">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button @click="moveItem(index, -1)" v-if="index > 0" class="text-gray-200 hover:text-gray-500">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                                <button @click="moveItem(index, 1)" v-if="index < currentDayItinerary.length - 1" class="text-gray-200 hover:text-gray-500">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="h-24"></div> <button @click="openAddModal" 
+                    class="fixed bottom-6 right-6 w-14 h-14 bg-arctic-deep text-white rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-arctic-mid transition-colors z-50">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <div v-if="currentTab === 'info'" class="space-y-6">
+            
+            <div class="bg-white rounded-xl shadow p-4 border-t-4 border-arctic-deep">
+                <h3 class="font-bold text-lg mb-3 text-arctic-deep"><i class="fas fa-plane-departure mr-2"></i>航班資訊</h3>
+                
+                <div class="mb-4 pb-4 border-b border-dashed border-gray-200">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded">去程 - Tigerair IT212</span>
+                        <span class="text-xs text-gray-500">2026-01-07</span>
+                    </div>
+                    <div class="flex justify-between items-center text-center">
+                        <div>
+                            <div class="text-2xl font-bold text-gray-800">14:40</div>
+                            <div class="text-xs text-gray-500">TPE 桃園 (T1)</div>
+                        </div>
+                        <div class="text-gray-300 text-xl"><i class="fas fa-long-arrow-alt-right"></i></div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-800">17:55</div>
+                            <div class="text-xs text-gray-500">KIX 關西 (T1)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded">回程 - Tigerair IT725</span>
+                        <span class="text-xs text-gray-500">2026-01-12</span>
+                    </div>
+                    <div class="flex justify-between items-center text-center">
+                        <div>
+                            <div class="text-2xl font-bold text-gray-800">13:00</div>
+                            <div class="text-xs text-gray-500">YGJ 米子</div>
+                        </div>
+                        <div class="text-gray-300 text-xl"><i class="fas fa-long-arrow-alt-right"></i></div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-800">15:20</div>
+                            <div class="text-xs text-gray-500">TPE 桃園 (T1)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-end mb-2">
+                    <h3 class="font-bold text-gray-700 text-lg">交通備忘錄</h3>
+                    <button @click="addTrafficItem" class="text-xs text-arctic-mid border border-arctic-mid px-2 py-1 rounded hover:bg-arctic-mid hover:text-white">新增</button>
+                </div>
+                <div class="space-y-3">
+                    <div v-for="(t, idx) in trafficList" :key="idx" class="bg-white p-3 rounded shadow-sm">
+                        <div class="flex gap-2 mb-2">
+                            <input v-model="t.date" type="date" class="text-sm bg-gray-50 border rounded px-1 w-1/3">
+                            <input v-model="t.name" placeholder="交通工具名稱" class="text-sm bg-gray-50 border rounded px-2 w-2/3 font-bold">
+                        </div>
+                        <input v-model="t.link" placeholder="官網連結" class="w-full text-xs text-blue-500 border-b border-dashed mb-2 focus:outline-none">
+                        <textarea v-model="t.note" placeholder="備註 (可換行)" class="w-full text-sm bg-gray-50 border rounded p-2 h-16"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                 <div class="flex justify-between items-end mb-2">
+                    <h3 class="font-bold text-gray-700 text-lg">行李清單</h3>
+                    <div class="flex gap-2">
+                        <input v-model="newItemName" @keyup.enter="addPackingItem" placeholder="輸入物品..." class="text-sm border rounded px-2 py-1">
+                        <button @click="addPackingItem" class="bg-arctic-mid text-white px-3 py-1 rounded text-sm"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-2">
+                    <div v-for="(item, idx) in packingList" :key="idx" class="flex items-center p-2 border-b last:border-0">
+                        <input type="checkbox" v-model="item.checked" class="w-5 h-5 text-arctic-deep rounded focus:ring-arctic-light">
+                        <span :class="{'line-through text-gray-400': item.checked}" class="ml-3 flex-1">{{ item.name }}</span>
+                        <button @click="packingList.splice(idx, 1)" class="text-gray-300 hover:text-red-400"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentTab === 'attractions'">
+            <div class="flex space-x-2 overflow-x-auto pb-2 mb-2 no-scrollbar">
+                <button v-for="region in regions" :key="region" 
+                        @click="selectedRegion = region"
+                        :class="selectedRegion === region ? 'bg-arctic-deep text-white' : 'bg-white text-gray-600'"
+                        class="px-4 py-1 rounded-full text-sm font-bold whitespace-nowrap shadow-sm border transition-colors">
+                    {{ region }}
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+                <div v-for="(spot, idx) in filteredAttractions" :key="idx" class="bg-white rounded-lg shadow-sm overflow-hidden flex">
+                    <div class="w-2 bg-arctic-mid"></div>
+                    <div class="p-4 flex-1">
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-bold text-lg">{{ spot.name }}</h3>
+                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">{{ spot.region }}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1">{{ spot.note }}</p>
+                        <div class="mt-3 flex gap-2">
+                            <a :href="spot.link || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(spot.name)" 
+                               target="_blank" class="flex-1 text-center bg-blue-50 text-blue-600 text-sm py-1.5 rounded hover:bg-blue-100 transition">
+                                <i class="fas fa-map-marked-alt mr-1"></i> 地圖
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+                    <h4 class="text-sm font-bold text-gray-500 mb-2">新增景點</h4>
+                    <div class="grid gap-2">
+                        <input v-model="newSpot.name" placeholder="名稱" class="p-2 rounded border text-sm">
+                        <select v-model="newSpot.region" class="p-2 rounded border text-sm">
+                            <option v-for="r in regions" :value="r">{{r}}</option>
+                        </select>
+                        <input v-model="newSpot.note" placeholder="備註" class="p-2 rounded border text-sm">
+                        <button @click="addSpot" class="bg-gray-600 text-white py-2 rounded text-sm hover:bg-gray-700">新增</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentTab === 'shopping'">
+            
+            <div class="bg-white p-4 rounded-xl shadow mb-6 border-l-4 border-arctic-mid">
+                <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-cart-plus mr-2"></i>新增待購/已購商品</h3>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-500 ml-1">購買地點/店名</label>
+                        <input v-model="newShopItem.location" placeholder="例如: 北野天滿宮、大國藥妝..." class="w-full border p-2 rounded text-sm bg-gray-50">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-500 ml-1">商品名稱</label>
+                        <input v-model="newShopItem.name" placeholder="商品名稱" class="w-full border p-2 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 ml-1">單價 (日幣)</label>
+                        <input v-model="newShopItem.price" type="number" placeholder="¥" class="w-full border p-2 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 ml-1">數量</label>
+                        <input v-model="newShopItem.qty" type="number" placeholder="1" class="w-full border p-2 rounded text-sm">
+                    </div>
+                </div>
+                <button @click="addShopItem" class="w-full bg-arctic-mid text-white py-2 rounded font-bold hover:bg-arctic-deep transition">加入清單</button>
+            </div>
+
+            <div class="space-y-6">
+                <div v-for="(group, locName) in shoppingByLocation" :key="locName" class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-gradient-to-r from-gray-100 to-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                        <h3 class="font-bold text-arctic-deep text-lg">
+                            <i class="fas fa-map-pin mr-2 text-red-400"></i>{{ locName }}
+                        </h3>
+                        <div class="text-right">
+                            <div class="text-[10px] text-gray-500 uppercase">Total</div>
+                            <span class="text-lg font-bold text-gray-800">¥{{ group.total.toLocaleString() }}</span>
+                        </div>
+                    </div>
+                    
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-500 bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-4 py-2 w-1/2">商品</th>
+                                <th class="px-2 py-2 text-center">數</th>
+                                <th class="px-2 py-2 text-right">單價</th>
+                                <th class="px-4 py-2 text-right">小計</th>
+                                <th class="w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, idx) in group.items" class="border-b last:border-0 hover:bg-gray-50">
+                                <td class="px-4 py-3 font-medium text-gray-700">{{ item.name }}</td>
+                                <td class="px-2 py-3 text-center text-gray-500">x{{ item.qty }}</td>
+                                <td class="px-2 py-3 text-right text-gray-500">¥{{ item.price }}</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-700">¥{{ (item.price * item.qty).toLocaleString() }}</td>
+                                <td class="px-2 text-center">
+                                    <button @click="deleteShoppingItem(item.originalIndex)" class="text-gray-300 hover:text-red-500">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div v-if="Object.keys(shoppingByLocation).length === 0" class="text-center text-gray-400 py-10">
+                    <i class="fas fa-shopping-basket text-4xl mb-2 opacity-50"></i>
+                    <p>目前沒有購物清單</p>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentTab === 'expenses'">
+            <div class="bg-gradient-to-r from-arctic-deep to-arctic-mid text-white rounded-xl p-6 shadow-lg mb-6 text-center">
+                <p class="text-sm opacity-80 mb-1">目前總花費</p>
+                <h2 class="text-4xl font-bold">¥ {{ totalExpenses.toLocaleString() }}</h2>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-4 mb-4">
+                <h3 class="font-bold mb-3 text-gray-700">記一筆</h3>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <input v-model="newExpense.date" type="date" class="border p-2 rounded text-sm bg-gray-50">
+                    <select v-model="newExpense.payment" class="border p-2 rounded text-sm bg-gray-50">
+                        <option value="現金">現金</option>
+                        <option value="信用卡">信用卡</option>
+                    </select>
+                    <input v-model="newExpense.item" placeholder="品名" class="border p-2 rounded text-sm col-span-2">
+                    <input v-model="newExpense.amount" type="number" placeholder="金額 (日幣)" class="border p-2 rounded text-sm col-span-2">
+                </div>
+                <button @click="addExpense" class="w-full bg-arctic-deep text-white py-2 rounded font-bold shadow hover:bg-arctic-deep/90">新增支出</button>
+            </div>
+
+            <div class="space-y-2">
+                <div v-for="(exp, idx) in sortedExpenses" :key="idx" class="bg-white p-3 rounded shadow-sm flex justify-between items-center border-l-4" :class="exp.payment === '現金' ? 'border-green-400' : 'border-blue-400'">
+                    <div>
+                        <div class="font-bold text-gray-800">{{ exp.item }}</div>
+                        <div class="text-xs text-gray-500">{{ exp.date }} · {{ exp.payment }}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-lg">¥{{ Number(exp.amount).toLocaleString() }}</span>
+                        <button @click="deleteExpense(idx)" class="text-gray-300 hover:text-red-500"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+            <div class="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">{{ isEditing ? '編輯行程' : '新增行程' }}</h3>
+                <button @click="closeModal" class="text-gray-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 space-y-3">
+                <label class="block text-xs font-bold text-gray-500 mb-1">分類</label>
+                <select v-model="modalForm.category" class="w-full p-2 border rounded bg-white mb-2">
+                    <option v-for="cat in categories" :value="cat">{{ cat }}</option>
+                </select>
+
+                <label class="block text-xs font-bold text-gray-500 mb-1">名稱</label>
+                <input v-model="modalForm.name" placeholder="地點名稱" class="w-full p-2 border rounded mb-2">
+
+                <div v-if="['景點','住宿','美食','購物'].includes(modalForm.category)">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">營業時間</label>
+                    <input v-model="modalForm.hours" placeholder="例如: 09:00 - 17:00" class="w-full p-2 border rounded mb-2">
+                </div>
+                
+                <div v-if="modalForm.category === '景點'">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">門票</label>
+                    <input v-model="modalForm.ticket" placeholder="門票資訊" class="w-full p-2 border rounded mb-2">
+                </div>
+
+                <label class="block text-xs font-bold text-gray-500 mb-1">備註 / 特色</label>
+                <textarea v-model="modalForm.notes" placeholder="輸入備註..." class="w-full p-2 border rounded h-20"></textarea>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 flex gap-3">
+                <button v-if="isEditing" @click="confirmDelete" class="flex-1 bg-red-100 text-red-600 py-2 rounded font-bold hover:bg-red-200">刪除</button>
+                <button @click="saveItem" class="flex-1 bg-arctic-deep text-white py-2 rounded font-bold hover:bg-opacity-90">儲存</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const { createApp, ref, computed, reactive } = Vue;
+
+    createApp({
+        setup() {
+            // --- 基礎配置 ---
+            const currentTab = ref('itinerary');
+            // 修改：依照需求調整分類
+            const categories = ['景點', '住宿', '美食', '其他'];
+            const regions = ['全部', '神戶', '鳥取', '米子', '由良', '松江', '出雲'];
+            
+            // --- 行程資料 (Itinerary) ---
+            const days = [
+                { date: '2026-01-07', dayOfWeek: 'Wed', dateDisplay: '1/7' },
+                { date: '2026-01-08', dayOfWeek: 'Thu', dateDisplay: '1/8' },
+                { date: '2026-01-09', dayOfWeek: 'Fri', dateDisplay: '1/9' },
+                { date: '2026-01-10', dayOfWeek: 'Sat', dateDisplay: '1/10' },
+                { date: '2026-01-11', dayOfWeek: 'Sun', dateDisplay: '1/11' },
+                { date: '2026-01-12', dayOfWeek: 'Mon', dateDisplay: '1/12' },
+            ];
+            const selectedDateIndex = ref(0);
+            
+            const hotels = {
+                '2026-01-07': { name: 'the b 神戶 (the b kobe)', address: '兵庫県神戸市中央区下山手通2-11-5', phone: '+81 78-333-4880' },
+                '2026-01-08': { name: '天然温泉 Super Hotel 鳥取駅北口', address: '鳥取県鳥取市今町2-382', phone: '+81 857-22-9000' }
+            };
+
+            const itineraryData = reactive(days.map(() => []));
+            const currentDayItinerary = computed(() => itineraryData[selectedDateIndex.value]);
+            const currentHotel = computed(() => hotels[days[selectedDateIndex.value].date] || { name: '尚未安排', address: '', phone: '' });
+
+            // --- 資訊 (Info - 原 Traffic) ---
+            const trafficList = reactive([
+                { date: '2026-01-07', name: 'JR 關西機場特快 HARUKA', link: '', note: '需提前預約 Hello Kitty 列車' }
+            ]);
+            const packingList = reactive([
+                { name: '護照', checked: false },
+                { name: '日幣', checked: false },
+                { name: '網卡/漫遊', checked: false }
+            ]);
+            const newItemName = ref('');
+
+            // --- 景點 (Attractions) ---
+            const selectedRegion = ref('全部');
+            const attractions = reactive([
+                { name: '鳥取砂丘', region: '鳥取', note: '冬天風大，注意保暖', link: '' },
+                { name: '出雲大社', region: '出雲', note: '求姻緣必去', link: '' }
+            ]);
+            const newSpot = reactive({ name: '', region: '神戶', note: '' });
+
+            // --- 購物 (Shopping) ---
+            const shoppingList = reactive([
+                { name: '北野天滿宮御守', location: '京都北野天滿宮', price: 1000, qty: 2 }
+            ]);
+            // 預設需要輸入地點
+            const newShopItem = reactive({ name: '', location: '', price: '', qty: 1 });
+
+            // --- 花費 (Expenses) ---
+            const expenses = reactive([]);
+            const newExpense = reactive({ date: new Date().toISOString().split('T')[0], item: '', amount: '', payment: '現金' });
+
+            // --- Modal 控制 ---
+            const showModal = ref(false);
+            const isEditing = ref(false);
+            const editingItemIndex = ref(null);
+            // 修改：初始化 transitMethod 為空字串，讓使用者自己輸入
+            const modalForm = reactive({ category: '景點', name: '', hours: '', ticket: '', notes: '', transitMethod: '', transitTime: '' });
+
+            // --- Methods ---
+            const selectDate = (index) => {
+                selectedDateIndex.value = index;
+                newExpense.date = days[index].date;
+            };
+
+            // 行程 CRUD
+            const openAddModal = () => {
+                isEditing.value = false;
+                Object.assign(modalForm, { category: '景點', name: '', hours: '', ticket: '', notes: '', transitMethod: '', transitTime: '' });
+                showModal.value = true;
+            };
+
+            const openEditModal = (item) => {
+                isEditing.value = true;
+                const idx = currentDayItinerary.value.indexOf(item);
+                editingItemIndex.value = idx;
+                Object.assign(modalForm, item);
+                showModal.value = true;
+            };
+
+            const saveItem = () => {
+                if (!modalForm.name) return alert('請輸入名稱');
+                if (isEditing.value) {
+                    Object.assign(currentDayItinerary.value[editingItemIndex.value], modalForm);
+                } else {
+                    currentDayItinerary.value.push({ ...modalForm, id: Date.now() });
+                }
+                closeModal();
+            };
+
+            const confirmDelete = () => {
+                if (confirm('確定要刪除此行程嗎？')) {
+                    currentDayItinerary.value.splice(editingItemIndex.value, 1);
+                    closeModal();
+                }
+            };
+
+            const closeModal = () => showModal.value = false;
+
+            const categoryBadge = (cat) => {
+                const map = {
+                    '景點': 'bg-pink-400', '住宿': 'bg-indigo-500', 
+                    '美食': 'bg-orange-400', '其他': 'bg-gray-400'
+                };
+                return map[cat] || 'bg-gray-400';
+            };
+            
+            // 行程排序
+            const dragStartIndex = ref(null);
+            const dragStart = (index) => dragStartIndex.value = index;
+            const drop = (index) => {
+                const item = currentDayItinerary.value.splice(dragStartIndex.value, 1)[0];
+                currentDayItinerary.value.splice(index, 0, item);
+                dragStartIndex.value = null;
+            };
+            const moveItem = (index, direction) => {
+                const newIndex = index + direction;
+                if (newIndex >= 0 && newIndex < currentDayItinerary.value.length) {
+                    const item = currentDayItinerary.value.splice(index, 1)[0];
+                    currentDayItinerary.value.splice(newIndex, 0, item);
+                }
+            };
+
+            // 交通
+            const addTrafficItem = () => trafficList.push({ date: '', name: '', link: '', note: '' });
+            const addPackingItem = () => {
+                if(newItemName.value) {
+                    packingList.push({ name: newItemName.value, checked: false });
+                    newItemName.value = '';
+                }
+            };
+
+            // 景點
+            const filteredAttractions = computed(() => {
+                if (selectedRegion.value === '全部') return attractions;
+                return attractions.filter(a => a.region === selectedRegion.value);
+            });
+            const addSpot = () => {
+                if(newSpot.name) {
+                    attractions.push({ ...newSpot });
+                    newSpot.name = ''; newSpot.note = '';
+                }
+            };
+
+            // 購物 (修改邏輯)
+            const addShopItem = () => {
+                if(newShopItem.name) {
+                    // 如果沒有輸入地點，給予預設值
+                    const itemToAdd = { ...newShopItem, location: newShopItem.location || '其他/未分類' };
+                    shoppingList.push(itemToAdd);
+                    newShopItem.name = ''; newShopItem.price = ''; newShopItem.qty = 1; 
+                    // location 不清空，方便連續輸入
+                }
+            };
+            
+            // 刪除購物項目需要特別處理，因為是在分組視圖中刪除原始 Array 的項目
+            const deleteShoppingItem = (originalIndex) => {
+                 shoppingList.splice(originalIndex, 1);
+            };
+            
+            const shoppingByLocation = computed(() => {
+                const grouped = {};
+                shoppingList.forEach((item, index) => {
+                    const loc = item.location;
+                    if (!grouped[loc]) grouped[loc] = { items: [], total: 0 };
+                    
+                    // 紀錄原始 index 方便刪除
+                    grouped[loc].items.push({ ...item, originalIndex: index });
+                    grouped[loc].total += (item.price * item.qty);
+                });
+                return grouped;
+            });
+
+            // 花費
+            const addExpense = () => {
+                if(newExpense.item && newExpense.amount) {
+                    expenses.push({ ...newExpense });
+                    newExpense.item = ''; newExpense.amount = '';
+                }
+            };
+            const deleteExpense = (idx) => expenses.splice(idx, 1);
+            const totalExpenses = computed(() => expenses.reduce((sum, item) => sum + Number(item.amount), 0));
+            const sortedExpenses = computed(() => [...expenses].reverse());
+
+            // UI Data - Tabs 修改：id改為 info, name改為 資訊
+            const tabs = [
+                { id: 'itinerary', name: '行程', icon: 'fas fa-calendar-alt' },
+                { id: 'info', name: '資訊', icon: 'fas fa-info-circle' },
+                { id: 'attractions', name: '景點', icon: 'fas fa-map-marked' },
+                { id: 'shopping', name: '購物', icon: 'fas fa-shopping-bag' },
+                { id: 'expenses', name: '花費', icon: 'fas fa-yen-sign' },
+            ];
+
+            return {
+                currentTab, tabs, days, selectedDateIndex, selectDate,
+                currentHotel, currentDayItinerary, categoryBadge, categories,
+                showModal, isEditing, modalForm, openAddModal, openEditModal, saveItem, confirmDelete, closeModal,
+                dragStart, drop, moveItem,
+                trafficList, addTrafficItem, packingList, newItemName, addPackingItem,
+                selectedRegion, regions, filteredAttractions, newSpot, addSpot,
+                shoppingList, newShopItem, addShopItem, shoppingByLocation, deleteShoppingItem,
+                totalExpenses, newExpense, addExpense, sortedExpenses, deleteExpense
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
