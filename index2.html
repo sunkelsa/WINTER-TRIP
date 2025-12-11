@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+<script src="https://www.gstatic.com/firebasejs/9/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9/firebase-firestore.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>2026 冬季日本行 - Winter Journey</title>
@@ -66,10 +68,7 @@
 
 <div id="app" class="min-h-screen pb-24 relative">
 
-    <header class="relative h-40 bg-gradient-to-r from-arctic-deep to-arctic-mid overflow-hidden shadow-md">
-        <img src="https://images.unsplash.com/photo-1483664852095-d6cc6870705d?q=80&w=2070&auto=format&fit=crop" 
-             class="absolute inset-0 w-full h-full object-cover opacity-50" alt="Winter Snow">
-        
+    <header class="relative h-40 bg-gradient-to-r from-arctic-deep to-arctic-mid overflow-hidden shadow-md">  
         <div class="absolute inset-0 flex items-center pl-6">
             <h1 class="text-3xl font-bold text-white tracking-widest drop-shadow-lg flex items-center">
                 <i class="fas fa-snowflake mr-3 text-arctic-light"></i>
@@ -492,7 +491,7 @@
 
             // --- 購物 (Shopping) ---
             const shoppingList = reactive([
-                { name: '北野天滿宮御守', location: '京都北野天滿宮', price: 1000, qty: 2 }
+                { name: '丙午歲刺繡御朱印', location: '神戶一宮神社', price: 1000, qty: 2 }
             ]);
             // 預設需要輸入地點
             const newShopItem = reactive({ name: '', location: '', price: '', qty: 1 });
@@ -654,6 +653,29 @@
             };
         }
     }).mount('#app');
+</script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyDzrnvbY9HCg38huqviZCDkb1tWmg0ztiY",
+    authDomain: "winter-journey.firebaseapp.com",
+    projectId: "winter-journey",
+    storageBucket: "winter-journey.firebasestorage.app",
+    messagingSenderId: "859636690882",
+    appId: "1:859636690882:web:ce2cb99b55a0027dee305b",
+    measurementId: "G-TVTZ22J4PZ"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
 </script>
 </body>
 </html>
